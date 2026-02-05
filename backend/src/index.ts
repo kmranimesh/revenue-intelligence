@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { initializeDatabase } from './db/database';
 import summaryRoutes from './routes/summaryRoutes';
+import driversRoutes from './routes/driversRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -12,6 +13,7 @@ app.use(express.json());
 initializeDatabase();
 
 app.use('/api', summaryRoutes);
+app.use('/api', driversRoutes);
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
