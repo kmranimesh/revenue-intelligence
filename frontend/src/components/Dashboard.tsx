@@ -1,4 +1,5 @@
-import { Box, Container, Typography } from '@mui/material';
+import { Container, Typography, Grid } from '@mui/material';
+import SummaryCard from './SummaryCard';
 
 function Dashboard() {
     return (
@@ -6,11 +7,14 @@ function Dashboard() {
             <Typography variant="h4" fontWeight="bold" gutterBottom>
                 Revenue Intelligence Console
             </Typography>
-            <Box sx={{ mt: 4 }}>
-                <Typography variant="body1" color="text.secondary">
-                    Dashboard components loading...
-                </Typography>
-            </Box>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+                Q4 2025 Performance Overview
+            </Typography>
+            <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                    <SummaryCard />
+                </Grid>
+            </Grid>
         </Container>
     );
 }
