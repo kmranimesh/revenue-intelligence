@@ -1,5 +1,6 @@
 import { Container, Typography, Grid } from '@mui/material';
 import SummaryCard from './SummaryCard';
+import DriversCard from './DriversCard';
 
 function Dashboard() {
     return (
@@ -13,6 +14,9 @@ function Dashboard() {
             <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
                     <SummaryCard />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                    <DriversCard />
                 </Grid>
             </Grid>
         </Container>
