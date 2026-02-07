@@ -16,13 +16,12 @@ function RevenueTrend() {
     const [chartWidth, setChartWidth] = useState(500);
 
     useEffect(() => {
-        // Fetch monthly revenue data from drivers endpoint
         Promise.all([
             fetch('/api/drivers').then(res => res.json()),
             fetch('/api/summary').then(res => res.json())
         ]).then(([driversData, summaryData]) => {
             if (driversData.monthlyTrends && driversData.monthlyTrends.length > 0) {
-                const monthlyTarget = summaryData.target / 3; // Quarterly target divided by 3
+                const monthlyTarget = summaryData.target / 3;
                 const trend: TrendData[] = driversData.monthlyTrends.slice(-6).map((m: { month: string; revenue: number }) => ({
                     month: new Date(m.month + '-01').toLocaleDateString('en-US', { month: 'short' }),
                     revenue: m.revenue,
@@ -37,7 +36,7 @@ function RevenueTrend() {
     useEffect(() => {
         const updateWidth = () => {
             if (containerRef.current) {
-                setChartWidth(containerRef.current.offsetWidth - 60);
+                setChartWidth(containerRef.current.offsetWidth - 48);
             }
         };
         updateWidth();
@@ -52,50 +51,49 @@ function RevenueTrend() {
     }, [trendData, chartWidth]);
 
     const drawChart = () => {
-        if (!svgRef.current || trendData.length === 0) return;
+        if (!svgRef.current || trendData.length === 0 || chartWidth < 100) return;
         const svg = d3.select(svgRef.current);
         svg.selectAll('*').remove();
 
-        const height = 200;
-        const margin = { top: 20, right: 30, bottom: 35, left: 50 };
+        const height = 220;
+        const margin = { top: 25, right: 20, bottom: 40, left: 45 };
 
         const x = d3.scaleBand()
             .domain(trendData.map(d => d.month))
             .range([margin.left, chartWidth - margin.right])
-            .padding(0.4);
+            .padding(0.35);
 
         const maxVal = Math.max(...trendData.map(d => Math.max(d.revenue, d.target)));
         const y = d3.scaleLinear()
-            .domain([0, maxVal * 1.2])
+            .domain([0, maxVal * 1.15])
             .range([height - margin.bottom, margin.top]);
 
         const g = svg.append('g');
 
-        // Grid lines
+        // Y-axis grid lines (horizontal dashed lines like reference)
+        const yTicks = y.ticks(5);
         g.selectAll('.grid-line')
-            .data(y.ticks(5))
+            .data(yTicks)
             .join('line')
-            .attr('class', 'grid-line')
             .attr('x1', margin.left)
             .attr('x2', chartWidth - margin.right)
             .attr('y1', d => y(d))
             .attr('y2', d => y(d))
             .attr('stroke', '#e5e7eb')
-            .attr('stroke-dasharray', '2,2');
+            .attr('stroke-width', 1);
 
-        // Draw bars (revenue)
+        // Draw bars (revenue) - blue like reference
         g.selectAll('.bar')
             .data(trendData)
             .join('rect')
-            .attr('class', 'bar')
             .attr('x', d => x(d.month)!)
             .attr('y', d => y(d.revenue))
             .attr('width', x.bandwidth())
             .attr('height', d => height - margin.bottom - y(d.revenue))
-            .attr('fill', '#3b82f6')
-            .attr('rx', 4);
+            .attr('fill', '#4169aa')
+            .attr('rx', 3);
 
-        // Draw line (target)
+        // Draw line (target) - orange like reference
         const line = d3.line<TrendData>()
             .x(d => x(d.month)! + x.bandwidth() / 2)
             .y(d => y(d.target))
@@ -104,75 +102,62 @@ function RevenueTrend() {
         g.append('path')
             .datum(trendData)
             .attr('fill', 'none')
-            .attr('stroke', '#f97316')
+            .attr('stroke', '#f59e0b')
             .attr('stroke-width', 2.5)
             .attr('d', line);
 
-        // Draw dots on line
+        // Draw dots on line - hollow circles like reference
         g.selectAll('.dot')
             .data(trendData)
             .join('circle')
-            .attr('class', 'dot')
             .attr('cx', d => x(d.month)! + x.bandwidth() / 2)
             .attr('cy', d => y(d.target))
-            .attr('r', 5)
+            .attr('r', 6)
             .attr('fill', 'white')
-            .attr('stroke', '#f97316')
-            .attr('stroke-width', 2);
+            .attr('stroke', '#f59e0b')
+            .attr('stroke-width', 2.5);
 
-        // X axis
-        g.append('g')
-            .attr('transform', `translate(0,${height - margin.bottom})`)
-            .call(d3.axisBottom(x).tickSize(0))
-            .selectAll('text')
-            .style('fill', '#64748b')
-            .style('font-size', '12px');
+        // X axis - just text, no line
+        g.selectAll('.x-label')
+            .data(trendData)
+            .join('text')
+            .attr('x', d => x(d.month)! + x.bandwidth() / 2)
+            .attr('y', height - margin.bottom + 25)
+            .attr('text-anchor', 'middle')
+            .attr('fill', '#374151')
+            .attr('font-size', '13px')
+            .attr('font-weight', '500')
+            .text(d => d.month);
 
-        // Y axis
-        const formatK = (d: number) => d >= 1000000 ? `$${(d / 1000000).toFixed(1)}M` : d >= 1000 ? `$${(d / 1000).toFixed(0)}K` : `$${d}`;
-        g.append('g')
-            .attr('transform', `translate(${margin.left},0)`)
-            .call(d3.axisLeft(y).ticks(5).tickFormat(d => formatK(d as number)).tickSize(0))
-            .selectAll('text')
-            .style('fill', '#64748b')
-            .style('font-size', '11px');
-
-        // Remove axis lines
-        svg.selectAll('.domain').style('stroke', 'none');
+        // Y axis labels
+        const formatK = (d: number) => d >= 1000 ? `${Math.round(d / 1000)}K` : `${d}`;
+        g.selectAll('.y-label')
+            .data(yTicks)
+            .join('text')
+            .attr('x', margin.left - 10)
+            .attr('y', d => y(d) + 4)
+            .attr('text-anchor', 'end')
+            .attr('fill', '#6b7280')
+            .attr('font-size', '12px')
+            .text(d => formatK(d));
     };
 
     if (loading) {
         return (
-            <Card sx={{ bgcolor: 'white', color: '#1a1f3c' }}>
-                <CardContent>
-                    <Skeleton variant="text" width={200} />
-                    <Skeleton variant="rectangular" height={200} sx={{ mt: 2 }} />
-                </CardContent>
+            <Card sx={{ bgcolor: 'white' }}>
+                <CardContent><Skeleton variant="rectangular" height={220} /></CardContent>
             </Card>
         );
     }
 
     return (
-        <Card ref={containerRef} sx={{ bgcolor: 'white', color: '#1a1f3c', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <Card ref={containerRef} sx={{ bgcolor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             <CardContent sx={{ p: 2.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                    <Typography variant="subtitle1" fontWeight="bold">
-                        Revenue Trend
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 3 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Box sx={{ width: 14, height: 14, bgcolor: '#3b82f6', borderRadius: 1 }} />
-                            <Typography variant="caption" color="text.secondary">Revenue</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Box sx={{ width: 14, height: 3, bgcolor: '#f97316', borderRadius: 1 }} />
-                            <Typography variant="caption" color="text.secondary">Target</Typography>
-                        </Box>
-                    </Box>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                    <svg ref={svgRef} width={chartWidth} height={200} />
-                </Box>
+                <Typography variant="subtitle1" sx={{ mb: 2 }}>
+                    <Box component="span" fontWeight="bold" color="#1a1f3c">Revenue Trend</Box>
+                    <Box component="span" color="#6b7280" fontWeight="normal" ml={1}>(Last 6 Months)</Box>
+                </Typography>
+                <svg ref={svgRef} width={chartWidth} height={220} style={{ display: 'block' }} />
             </CardContent>
         </Card>
     );
